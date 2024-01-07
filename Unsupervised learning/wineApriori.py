@@ -4,48 +4,37 @@ from mlxtend.frequent_patterns import apriori, association_rules
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-def read_and_preprocess_data(file_path):
-    # Load do dataset
-    wine_data = pd.read_csv(file_path)
 
-    # Seleciona as colunas relevantes
-    wine_data = wine_data[['id', 'country', 'winery', 'variety', 'province', 'points', 'taster_name']]
-
-    # Remove linhas com valores nulos
-    wine_data = wine_data.dropna()
-
-    return wine_data
-
-def eda_top_wines_per_country(wine_data):
+def edaPaises(wine_data):
     # Agrupa os dados por país e encontra os 10 melhores vinhos com base em pontos
-    top_wines_per_country = wine_data.groupby('country').apply(lambda x: x.nlargest(10, 'points')).reset_index(drop=True)
+    topCountry = wine_data.groupby('country').apply(lambda x: x.nlargest(10, 'points')).reset_index(drop=True)
 
     sns.set(style="whitegrid")
 
     # Grafico
     plt.figure(figsize=(15, 8))
-    sns.barplot(x='country', y='points', data=top_wines_per_country, errorbar=None)
+    sns.barplot(x='country', y='points', data=topCountry, errorbar=None)
     plt.title('Média de pontos por país')
     plt.xlabel('País')
     plt.ylabel('Média de pontos')
     plt.show()
 
-def apriori_association_analysis(wine_data):
+def aprioriAssociation(wine_data):
     # Agrupar por country and points, counta as ocurrencias de taster_name
-    variety_grouped = wine_data.groupby(['country', 'points'], as_index=False).agg({'taster_name': 'count'})
-    print(variety_grouped)
+    wineGrouped = wine_data.groupby(['country', 'points'], as_index=False).agg({'taster_name': 'count'})
+    print(wineGrouped)
 
     # Cria uma Pivot table
-    item_count_pivot = pd.pivot_table(variety_grouped, index='points', columns=['country'], values='taster_name', fill_value=0)
-    item_count_pivot = item_count_pivot.map(lambda x: True if x > 0 else False)
-    print(item_count_pivot)
+    pivot = pd.pivot_table(wineGrouped, index='points', columns=['country'], values='taster_name', fill_value=0)
+    pivot = pivot.map(lambda x: True if x > 0 else False)
+    print(pivot)
 
     # Aplica Apriori algorithm
-    freq_itemsets = apriori(item_count_pivot, min_support=0.3, use_colnames=True)
-    print(freq_itemsets)
+    freqItems = apriori(pivot, min_support=0.3, use_colnames=True)
+    print(freqItems)
 
     # Gera regras de associação
-    rules = association_rules(freq_itemsets, metric="support", min_threshold=0.5)
+    rules = association_rules(freqItems, metric="support", min_threshold=0.5)
     print(rules.head())
 
     # Exiba as regras
@@ -55,133 +44,133 @@ def apriori_association_analysis(wine_data):
     return rules
  
 
-def best_country_based_on_association_rules(rules):
+def melhorPaisAssociaciado(rules):
     # Filtra as regras de associação positiva
-    positive_rules = rules[rules['lift'] > 1]
+    posRules = rules[rules['lift'] > 1]
 
     # Calcula o support total para cada antecedente
-    country_support = positive_rules.groupby('antecedents')['support'].sum()
+    paisSupp = posRules.groupby('antecedents')['support'].sum()
 
     # Identifica o país com maior apoio total 
-    best_country = country_support.idxmax()
+    melhorPais = paisSupp.idxmax()
 
-    return best_country
+    return melhorPais
 
 
-def get_countries_with_90_points(wine_data):
+def melhorPais90Pontos(wine_data):
   
     # Filtra vinhos com pelo menos 90 pontos
-    high_scored_wines = wine_data[wine_data['points'] >= 90]
+    vinhosHighScored = wine_data[wine_data['points'] >= 90]
 
     # Obtenha países unicos do dataset 
-    countries_with_90_points = high_scored_wines['country'].unique()
+    paises90 = vinhosHighScored['country'].unique()
     print("Países com pelo menos um vinho com pontuação de 90 pontos ou mais:")
-    print(countries_with_90_points)
+    print(paises90)
 
 
-    return high_scored_wines
-
-
-# File path
-file_path = "winemag-data1.csv"
-
-# Wine data
-wine_data = read_and_preprocess_data(file_path)
-
-# Performa Análise exploratória de dados para cada pais
-eda_top_wines_per_country(wine_data)
-
-# Apriori Association Analysis
-rules = apriori_association_analysis(wine_data)
-
-# Obtenha o melhor país com base nas association rules
-best_country = best_country_based_on_association_rules(rules)
-print(f"O país com mais vinhos nesta magazine com base nas regras da associação é: {best_country}")
-
-# Obtenha países com pelo menos um vinho com pontuação de 90 pontos ou mais
-countries_90_points = get_countries_with_90_points(wine_data)
-rules = apriori_association_analysis(countries_90_points)
-
-best_country_with_90_points_up = best_country_based_on_association_rules(rules)
-print(f"O país com os melhores vinhos é: {best_country_with_90_points_up}")
+    return vinhosHighScored
 
 # Recomendacao de paises com pontucaoes similares
-def recommend_similar_point_countries(rules_df, target_country, wine_data, rec_count):
-    target_country_average_points = wine_data[wine_data['country'] == target_country]['points'].mean()
+def recomendacaoPaisSimilhar(rules, pais, wineData, rec_count):
+    paisPontosMedia = wineData[wineData['country'] == pais]['points'].mean()
 
-    sorted_rules = rules_df.sort_values('lift', ascending=False)
-    recommended_countries = []
+    sort = rules.sort_values('lift', ascending=False)
+    paisRecomendados = []
 
-    for i, rule in sorted_rules['antecedents'].items():
+    for i, rule in sort['antecedents'].items():
         for j in list(rule):
-            if j == target_country:
-                recommended_countries.append((list(sorted_rules.iloc[i]['consequents']), sorted_rules.iloc[i]['lift']))
+            if j == pais:
+                paisRecomendados.append((list(sort.iloc[i]['consequents']), sort.iloc[i]['lift']))
 
-    recommended_countries = [(country, lift) for country_list, lift in recommended_countries for country in country_list]
-    recommended_countries = list(set(recommended_countries))
+    paisRecomendados = [(country, lift) for country_list, lift in paisRecomendados for country in country_list]
+    paisRecomendados = list(set(paisRecomendados))
     
     # Filtra os países recomendados com base em pontos semelhantes e pontos médios mais altos do que o target country
-    similar_point_countries = [
-        country for country, _ in sorted(recommended_countries, key=lambda x: x[1], reverse=True)
-        if wine_data[wine_data['country'] == country]['points'].mean() > target_country_average_points
+    paisesSimilhar = [
+        country for country, _ in sorted(paisRecomendados, key=lambda x: x[1], reverse=True)
+        if wineData[wineData['country'] == country]['points'].mean() > paisPontosMedia
     ]
     
-    return similar_point_countries[:rec_count]
+    return paisesSimilhar[:rec_count]
 
-def get_recommended_similar_point_countries(target_country, rules_df, wine_data, rec_count):
-    recommended_countries = recommend_similar_point_countries(rules_df, target_country, wine_data, rec_count)
-    return recommended_countries
-
-
-# Recomendacao de Paises similhares a France
-target_country = 'France'
-recommended_countries = get_recommended_similar_point_countries(target_country, rules, wine_data, rec_count=3)
-print(f'\nPais: {target_country}')
-print(f'Países recomendados: {recommended_countries}')
-
-
-def apriori_most_picked_wines_by_tasters(wine_data, target_country):
+def aprioriTastersFavoritos(wineData, pais):
     # Filtra o dados para o pais especifico
-    country_data = wine_data[wine_data['country'] == target_country]
+    paisData = wineData[wineData['country'] == pais]
 
     # Agrupa por variety e taster, e conta as occurencias de cada id da review
-    wine_taster_grouped = country_data.groupby(['variety', 'taster_name'], as_index=False).agg({'id': 'count'})
+    variedadesTasterGrouped = paisData.groupby(['variety', 'taster_name'], as_index=False).agg({'id': 'count'})
 
     # Cria uma Pivot table
-    item_count_pivot = pd.pivot_table(wine_taster_grouped, index='taster_name', columns=['variety'], values='id', fill_value=0)
-    item_count_pivot = item_count_pivot.map(lambda x: 1 if x > 0 else 0)
+    pivot = pd.pivot_table(variedadesTasterGrouped, index='taster_name', columns=['variety'], values='id', fill_value=0)
+    pivot = pivot.map(lambda x: True if x > 0 else False)
 
     # Aplica Apriori algorithm
-    freq_itemsets = apriori(item_count_pivot, min_support=0.3, use_colnames=True)
+    freqItems = apriori(pivot, min_support=0.3, use_colnames=True)
 
     # Gera regras de associação
-    rules = association_rules(freq_itemsets, metric="support", min_threshold=0.5)
+    rules = association_rules(freqItems, metric="support", min_threshold=0.5)
 
     # Filtra as regras de associação positiva
-    positive_rules = rules[rules['lift'] > 1]
+    posRules = rules[rules['lift'] > 1]
 
     # Calcula o support total para cada antecedente
-    variety_support = positive_rules.groupby('antecedents')['support'].sum()
+    varietySupp = posRules.groupby('antecedents')['support'].sum()
 
-    sorted_variety_support = variety_support.sort_values(ascending=False)
+    sortVariety = varietySupp.sort_values(ascending=False)
 
     plt.figure(figsize=(15, 8))
-    sns.lineplot(x=range(len(sorted_variety_support)), y=sorted_variety_support.values, color='skyblue')
-    plt.title(f'Quandtidade da Variedade de vinhos de {target_country}')
+    sns.lineplot(x=range(len(sortVariety)), y=sortVariety.values, color='skyblue')
+    plt.title(f'Quandtidade da Variedade de vinhos de {pais}')
     plt.xlabel('Variedade Index')
     plt.ylabel('Número médio')
     plt.show()
 
     # Identifique o vinho mais escolhido
-    max_support = sorted_variety_support.max()
-    most_picked_wineries = sorted_variety_support[sorted_variety_support == max_support].index.tolist()
+    maisEscolhido = sortVariety.max()
+    maisEscolhidoLista = sortVariety[sortVariety == maisEscolhido].index.tolist()
 
-    return most_picked_wineries
+    return maisEscolhidoLista
+
+# File path
+file_path = "winemag-data1.csv"
+
+# Load do dataset
+wine_data = pd.read_csv(file_path)
+
+# Seleciona as colunas relevantes
+wine_data = wine_data[['id', 'country', 'winery', 'variety', 'province', 'points', 'taster_name']]
+
+# Remove linhas com valores nulos
+wine_data = wine_data.dropna()
+
+# Performa Análise exploratória de dados para cada pais
+edaPaises(wine_data)
+
+# Apriori Association Analysis
+rules = aprioriAssociation(wine_data)
+
+# Obtenha o melhor país com base nas association rules
+paisMaisAssociado = melhorPaisAssociaciado(rules)
+print(f"O país com mais vinhos nesta magazine com base nas regras da associação é: {paisMaisAssociado}")
+
+# Obtenha países com pelo menos um vinho com pontuação de 90 pontos ou mais
+paises90 = melhorPais90Pontos(wine_data)
+rules = aprioriAssociation(paises90)
+
+melhorPais = melhorPaisAssociaciado(rules)
+print(f"O país com os melhores vinhos é: {melhorPais}")
+
+
+# Recomendacao de Paises similhares a France
+paisSelec = 'France'
+paisRecomendado = recomendacaoPaisSimilhar(rules, paisSelec, wine_data, rec_count=3)
+print(f'\nPais: {paisSelec}')
+print(f'Países recomendados: {paisRecomendado}')
 
 # Escolhe o vinho mais escolhido por pais (Germany neste exemplo) pelos taste reviewers 
-target_country = 'Germany'
-most_picked_wine = apriori_most_picked_wines_by_tasters(wine_data, target_country)
-print(f"Os vinhos mais escolhidos na {target_country} por taste reviewers são: {most_picked_wine}")
+paisSelec = 'Germany'
+vinhosMaisEscolhidos = aprioriTastersFavoritos(wine_data, paisSelec)
+print(f"Os vinhos mais escolhidos na {paisSelec} por taste reviewers são: {vinhosMaisEscolhidos}")
 
 
 
