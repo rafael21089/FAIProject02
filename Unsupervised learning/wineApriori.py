@@ -20,12 +20,12 @@ def edaPaises(wine_data):
     plt.show()
 
 def aprioriAssociation(wine_data):
-    # Agrupar por country and points, counta as ocurrencias de taster_name
-    wineGrouped = wine_data.groupby(['country', 'points'], as_index=False).agg({'taster_name': 'count'})
+    # Agrupar por country and points, counta as ocurrencias dos id das reviews (o numero das reviews)
+    wineGrouped = wine_data.groupby(['country', 'points'], as_index=False).agg({'id': 'count'})
     print(wineGrouped)
 
     # Cria uma Pivot table
-    pivot = pd.pivot_table(wineGrouped, index='points', columns=['country'], values='taster_name', fill_value=0)
+    pivot = pd.pivot_table(wineGrouped, index='points', columns=['country'], values='id', fill_value=0)
     pivot = pivot.map(lambda x: True if x > 0 else False)
     print(pivot)
 
@@ -132,7 +132,7 @@ def aprioriTastersFavoritos(wineData, pais):
     return maisEscolhidoLista
 
 # File path
-file_path = "winemag-data1.csv"
+file_path = "wine_database\winemag-data.csv"
 
 # Load do dataset
 wine_data = pd.read_csv(file_path)
@@ -167,8 +167,8 @@ paisRecomendado = recomendacaoPaisSimilhar(rules, paisSelec, wine_data, rec_coun
 print(f'\nPais: {paisSelec}')
 print(f'Países recomendados: {paisRecomendado}')
 
-# Escolhe o vinho mais escolhido por pais (Germany neste exemplo) pelos taste reviewers 
-paisSelec = 'Germany'
+# Escolhe o vinho mais escolhido por pais (France neste exemplo) pelos taste reviewers 
+paisSelec = 'France'
 vinhosMaisEscolhidos = aprioriTastersFavoritos(wine_data, paisSelec)
 print(f"Os vinhos mais escolhidos na {paisSelec} por taste reviewers são: {vinhosMaisEscolhidos}")
 

@@ -13,7 +13,7 @@ df_cleaned = wine.dropna()
 # Usa o Elbow Method para encontrar o numero ideal de Clusters
 inertia = []
 for num_clusters in range(1, 11):
-    kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+    kmeans = KMeans(n_clusters=num_clusters, random_state=42,n_init='auto')
     kmeans.fit(wine)
     inertia.append(kmeans.inertia_)
 
@@ -30,7 +30,7 @@ plt.show()
 clusters = 3
 
 # Aplica k-means clustering com 3 clusters
-kmeans = KMeans(n_clusters=clusters, random_state=42)
+kmeans = KMeans(n_clusters=clusters, random_state=42,n_init='auto')
 wine['cluster'] = kmeans.fit_predict(wine)
 
 # Mostra as atribuições do cluster
@@ -39,8 +39,11 @@ print(wine[['fixed acidity', 'volatile acidity', 'citric acid', 'residual sugar'
          'chlorides', 'free sulfur dioxide', 'total sulfur dioxide', 'sulphates',
          'alcohol', 'quality', 'cluster']])
 
+# Tira Qualidade e pH ja que nao é um quimico
+winecopy = wine.drop(['quality', 'pH'], axis=1)
+
 # Calcule os valores médios para cada cluster
-clusterMedia = wine.groupby('cluster').mean()
+clusterMedia = winecopy.groupby('cluster').mean()
 
 # Grafico que mostra os valores médios para cada cluster
 clusterMedia.transpose().plot(kind='bar', figsize=(12, 6))
@@ -70,41 +73,28 @@ print("Distribuicao de Qualidade:")
 for category, count in zip(qualidade.index, qualidade):
     print(f"{category:<15}: {count}")
 
+
 # Cria um Pie Chart para a relação produtos químicos e qualidade (em percentagem)
 quimicosColunas = ['fixed acidity', 'volatile acidity', 'citric acid', 'residual sugar',
                      'chlorides', 'free sulfur dioxide', 'total sulfur dioxide', 'sulphates', 'alcohol']
 
 # Calcula os valores médios para cada produto químico em cada categoria de qualidade
-quimicosMedia = wine.groupby('qualitylabel')[quimicosColunas].mean()
+quimicosMedia = wine.groupby('qualitylabel',observed=True)[quimicosColunas].mean()
 
-fig, axes = plt.subplots(nrows=1, ncols=len(quimicosMedia), figsize=(15, 5))
+fig, axes = plt.subplots(nrows=1, ncols=len(quimicosMedia), figsize=(24, 5))
 
 for ax, quality_category in zip(axes, quimicosMedia.index):
     wedges, texts, autotexts = ax.pie(
         quimicosMedia.loc[quality_category],
         labels=None,
-        autopct='',
+        autopct='%1.1f%%',
         startangle=90,
         colors=plt.cm.tab10.colors
     )
     ax.set_title(f'Composição Química para {quality_category}')
-    ax.legend(wedges, quimicosColunas, title="Quimicos", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
+    ax.legend(wedges, quimicosColunas, title="Quimicos", loc="center left", bbox_to_anchor=(0.9, 0, 0.5, 0.5))
     ax.axis('equal')
 
-# Mostra uma tabela com as percentagens de cada quimico
-plt.figure()
-table_data = quimicosMedia.T
-table_data.index.name = 'Quimicos'
-table_data.reset_index(inplace=True)
-table = plt.table(cellText=table_data.values,
-                  colLabels=table_data.columns,
-                  cellLoc='center',
-                  loc='center')
-table.auto_set_font_size(False)
-table.set_fontsize(10)
-table.scale(1.2, 1.2)
-plt.axis('off')
-plt.show()
 
 plt.figure(figsize=(15, 8))
 
